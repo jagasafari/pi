@@ -1,19 +1,28 @@
 module Tests
 
-open System
 open Xunit
-open Swensen.Unquote
 open DataTypes
+open Swensen.Unquote
+open Validate
 
-let add circuit el = Array.append circuit [| el |]
-let startCircuit (pin: PowerPin) = 
-    pin |> PowerPin |> GpioPin |> add [||] |> ForCabel
-let addCabel (ForCabel circuit) = 
-    add circuit Cabel |> ForBreadBoardPosition
 [<Fact>]
-let ``simple circle compile`` () =
-    let (ForBreadBoardPosition circuit) = 
-        startCircuit PowerPin2 
-        |> addCabel
-    //    |> addBreadBoard (HorTop 3)
-    circuit =! [| PowerPin2 |> PowerPin |> GpioPin; Cabel |]
+let ``modeling simple circuit`` () =
+    let circuit =
+        [
+        Cabel (PowerPin (5.0, 2), TopHor 3)
+        Led (TopHor 5, TopGround 7)
+        Cabel (TopGround 9, TopGround 5)
+        ] |> List.toSeq
+    circuit |> build
+    =! (Choice1Of2 circuit)
+
+[<Fact>]
+let ``validaiting element`` () =
+    PowerPin (5.0, 2) |> validateElement  
+    =! None
+
+[<Theory>]
+[<InlineData(5.0, 2)>]
+let ``validatePowerPin`` volts num =
+    validatePowerPin (volts, num)
+    =! None
