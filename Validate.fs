@@ -2,35 +2,37 @@ module Validate
 
 open DataTypes
 
-type BuildError =
-    | NotGpioPowerPin of (float * int)
-    | WrongValidation of Element
+let getResult element = function
+    | None -> element | Some er -> Err er
 
-let contains list n = 
-    List.exists (fun e -> e = n) list
+let contains n = List.exists (fun e -> e = n)
 
 let getErr msg = function
     | true -> None | false -> Some msg
 
-let validatePowerPin p = 
-    let getPowerPinErr l v n =    
-        contains l n
-        |> getErr (NotGpioPowerPin (v, n))
-    match p with
-    | 5.0, n -> getPowerPinErr [2;4] 5.0 n
-    | 3.0, n -> getPowerPinErr [1;17] 3.0 n
-    | _ -> None
+let getGroundPinErr n =
+    contains n [6; 9; 14; 20; 25; 30; 34; 39]
+    |> getErr (NotGroundPin n)
 
-// Element -> BuildError option
-let validateElement (element: Element) =
+let getPowerPinErr (v, n) = 
+    let er = NotGpioPowerPin (v, n)
+    let getErr = contains n >> getErr er
+    match v with
+    | 5.0 -> getErr [2;4] 
+    | 3.0 -> getErr [1;17] 
+    | _ -> Some er
+
+// Element -> Element
+let rec buildElement element =
     match element with
-    | PowerPin p -> validatePowerPin p
-    | e -> Some (WrongValidation e)
+    | PowerPin p -> p |> getPowerPinErr
+    | GroundPin p -> p |> getGroundPinErr
+    | e -> e |> WrongValidation |> Some
+    |> getResult element
 
-// Element seq -> 
-// Choice<Element seq, BuildError seq>
+// Element seq -> Element seq
 let build circuit = 
     circuit
-    |> Seq.map validateElement 
+    |> Seq.map buildElement 
     |> ignore
-    Choice1Of2 circuit
+    circuit

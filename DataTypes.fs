@@ -7,5 +7,8 @@ type Element =
     | TopGround of int
     | Cabel of (Element * Element)
     | Led of (Element * Element)
-
-// invalid builderr element, validate retrun eitehr valid element or buildErr
+    | Err of BuildError
+and BuildError =
+    | WrongValidation of Element
+    | NotGpioPowerPin of (float * int)
+    | NotGroundPin of int
