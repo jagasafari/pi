@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="DataTypes.fs" />
     <Compile Include="Validate.fs" />
+    <Compile Include="Read.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

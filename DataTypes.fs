@@ -9,20 +9,19 @@ type Element =
     | BottomHor of int
     | BottomGround of int
     | BottomVer of (int*char)
-    | Cabel of (Element * Element)
-    | Led of (Element * Element)
-    | Err of BuildError
+    | CabelIn of Element
+    | CabelOut of Element
+    | LedAnode of Element
+    | LedKatode of Element
+    | Err of (BuildError * Element)
 and BuildError =
-    | WrongValidation of Element
-    | NotPowerPin of (float * int)
-    | NotGroundPin of int
-    | NotHorizontalBreadBoardPosition 
-        of Element
-    | NotVerticalBreadBoardPosition of Element
-    | CabelTwoGpioPositions of (Element * Element)
-    | CabelNoGpioPosition of (Element * Element)
-    | CabelNotValidPosition of 
-        (Element * Element)
-    | LedInvalidPosition of (Element * Element)
+    | NotImplementedValidation
+    | NotGpioPin
+    | NotPowerPinParameters
+    | NotGroundPinParameters
+    | NotBreadBoardPosition
+    | NotBreadBoardParameters 
+    | LedInvalidPosition
     | LedCanOnlyBeConnectedToBreadBoard 
-        of (Element * Element)
+    | MinusChargeNotToGround
+    | PositionAlreadyTaken

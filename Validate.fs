@@ -1,38 +1,54 @@
 module Validate
 
+open System.Collections.Generic
+open Microsoft.FSharp.Reflection
 open DataTypes
 
-let getResult element = function
-    | None -> element | Some er -> Err er
+let pairwiseRules = Dictionary<string, string>()
+pairwiseRules.Add("LedAnode", "LedKatode") 
+pairwiseRules.Add("LedKatode", "LedAnode") 
+pairwiseRules.Add("CabelIn", "CabelOut") 
+pairwiseRules.Add("CabelOut", "CabelIn") 
 
-let listErr (err: BuildError) n =
+let getElementName case =
+    (FSharpValue.GetUnionFields(
+        case, typeof<Element>)
+    |> fst).Name
+
+let buildResult element = function
+    | None -> element 
+    | Some er -> Err (er, element)
+
+let existsErr (err: BuildError) n =
     let getErr = function
         | true -> None | false -> Some err
     List.exists (fun e -> e = n) >> getErr
 
-let getGroundPinErr n =
+let buildGroundPin n =
     let pinNumbers = [6;9;14;20;25;30;34;39] 
-    listErr (NotGroundPin n) n pinNumbers
+    existsErr 
+       NotGroundPinParameters n pinNumbers
 
-let getPowerPinErr (v, n) = 
-    let err = NotPowerPin (v, n) 
+let buildPowerPin (v, n) = 
+    let err = NotPowerPinParameters
     match v with
-    | 5.0 -> listErr err n [2;4] 
-    | 3.0 -> listErr err n [1;17] 
+    | 5.0 -> existsErr err n [2;4] 
+    | 3.0 -> existsErr err n [1;17] 
     | _ -> Some err
 
-let getBreadBoardHorErr num element =
-    let err = 
-        NotHorizontalBreadBoardPosition 
-            element
-    listErr err num [1 .. 63]
+let buildGpioPin = function
+    | PowerPin p -> buildPowerPin p
+    | GroundPin p -> buildGroundPin p
+    | _ -> Some NotGpioPin
 
-let getBreadBoardVerTopErr 
-    (h, v) element positions =
-    let err =
-        NotVerticalBreadBoardPosition element
-    let eh = listErr err h [1 .. 63]
-    let ev = listErr err v positions 
+let buildBBHor num element =
+    let err = NotBreadBoardParameters 
+    existsErr err num [1 .. 63]
+
+let buildBBVer element (h, v) positions =
+    let err = NotBreadBoardParameters
+    let eh = existsErr err h [1 .. 63]
+    let ev = existsErr err v positions 
     match (eh, ev) with
     | None, None -> None
     | _ -> Some err
@@ -41,59 +57,74 @@ let isGpioPin = function
     | PowerPin _ | GroundPin _ -> true 
     | _ -> false
 
-let getCabelErr build (p1, p2) =
-    let getPosNumErr () =
-        let b1 = build p1
-        let b2 = build p2
-        match b1, b2 with
-        | Err _, _ | _, Err _ -> 
-            CabelNotValidPosition (b1, b2) 
-            |> Some
-        | _ -> None
-    match isGpioPin p1, isGpioPin p2 with
-    | (true, true) -> 
-        CabelTwoGpioPositions (p1, p2) |> Some
-    | true, false 
-    | false, true -> getPosNumErr()
-    | _ -> 
-        CabelNoGpioPosition (p1, p2) |> Some
+let isBBPos = function
+    | TopHor _ 
+    | TopGround _ 
+    | BottomHor _ 
+    | BottomGround _ 
+    | TopVer _
+    | BottomVer _ -> true
+    | _ -> false
 
-let getLedErr build (p1, p2) =
-    let posErr () =
-        let b1 = build p1
-        let b2 = build p2
-        match b1, b2 with
-        | Err _, _ | _, Err _ -> 
-            LedInvalidPosition (b1, b2) 
-            |> Some
-        | _ -> None
-    match isGpioPin p1, isGpioPin p2 with
-    | false, false -> posErr ()
-    | _ -> 
-        LedCanOnlyBeConnectedToBreadBoard (p1, p2) 
-        |> Some
+let buildBBPos element =
+    let buildBBVer = buildBBVer element
+    match element with
+    | TopHor p 
+    | BottomHor p 
+    | TopGround p 
+    | BottomGround p -> buildBBHor p element
+    | TopVer p -> buildBBVer p ['A' .. 'E']
+    | BottomVer p -> buildBBVer p ['F' .. 'J']
+    | _ -> Some NotBreadBoardPosition
+
+let buildLedKatode = function
+    | TopGround _
+    | BottomGround _ -> Some MinusChargeNotToGround
+    | element -> buildBBPos element
+
+let isTaken (hs: HashSet<Element>) = function 
+    | CabelIn e 
+    | CabelOut e 
+    | LedAnode e
+    | LedKatode e 
+    | e -> hs.Add e |> not
+
+let buildNewElement = function 
+    | e when isBBPos e -> buildBBPos e
+    | PowerPin p -> buildPowerPin p
+    | GroundPin p -> buildGroundPin p
+    | CabelIn e -> buildGpioPin e
+    | CabelOut e -> buildBBPos e
+    | LedAnode e -> buildBBPos e
+    | LedKatode e -> buildLedKatode e
+    | e -> NotImplementedValidation |> Some
 
 // Element -> Element
-let rec buildElement element =
-    match element with
-    | PowerPin p -> p |> getPowerPinErr
-    | GroundPin p -> p |> getGroundPinErr
-    | TopHor p 
-    | TopGround p 
-    | BottomHor p 
-    | BottomGround p -> 
-        getBreadBoardHorErr p element
-    | TopVer p ->
-        getBreadBoardVerTopErr 
-            p element ['A' .. 'E']
-    | BottomVer p -> 
-        getBreadBoardVerTopErr 
-            p element ['F' .. 'J']
-    | Cabel p -> getCabelErr buildElement p
-    | Led p -> getLedErr buildElement p
-    | e -> e |> WrongValidation |> Some
-    |> getResult element
+let buildElement () =
+    let hs = HashSet<Element>()
+    let isTaken = isTaken hs
+    fun element ->
+        if isTaken element 
+        then PositionAlreadyTaken |> Some
+        else buildNewElement element
+        |> buildResult element
+
+let isErrElement = function
+    | Err _ -> true | _ -> false
+
+let passFstValidation circuit =
+    circuit
+    |> Seq.exists isErrElement
+    |> not
 
 // Element seq -> Element seq
 let build circuit = 
-    circuit |> Seq.map buildElement 
+    let buildElement = buildElement()
+    let buildFstValidation = Seq.map buildElement 
+    let buildSndValidation circuit = 
+        circuit
+        |> passFstValidation 
+        |> function _ -> circuit
+    circuit 
+    |> buildFstValidation
+    |> buildSndValidation
