@@ -115,9 +115,9 @@ let isErrElement = function
 let passFstValidation =
     List.exists isErrElement >> not
 
-let buildSndValidation circuit =
+let buildSndValidation (circuit: Element list) =
     circuit
-    |> passFirstValidation
+    |> passFstValidation
     |> function 
         | false -> circuit
         | true -> circuit

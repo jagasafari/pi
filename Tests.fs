@@ -6,25 +6,28 @@ open DataTypes
 open Swensen.Unquote
 open Validate
 
-let testCircuit circuit expected =
+let testCircuit build circuit expected =
     circuit |> build |> Seq.zip <| expected 
     |> Seq.iter (fun (x, y) -> x =! y)
 
-//let testValidationStage circuit expected =
-//    circuit |> Seq.zip <| expected 
-//    |> Seq.iter (fun (x, y) -> x =! y)
-//
-//[<Fact>]
-//let ``buildSndValidation`` () =
-//    let circuit = [ BottomVer (8,'J') ]
-//    let result = circuit |> buildSndValidation
-//    testCircuit result circuit
-//
+let testBuild = testCircuit build
+let testSndLine c e = 
+    testCircuit buildSndValidation c e 
+    
+[<Fact>]
+let ``buildSndValidation`` () =
+    let circuit = [ BottomVer (8,'J') ]
+    let result = circuit |> buildSndValidation
+    testSndLine result circuit
+
 //[<Fact>]
 //let ``buildSndValidation:  invalid circuit`` () =
-//    let circuit = [ NotGpioPin (TopHor 3) ]
-//    let result = circuit |> buildSndValidation      
-//    testCircuit result circuit
+//    let circuit: Element list = 
+//        [ 
+//        (Err (NotGpioPin, (TopHor 3))) 
+//        ]
+//    let result = [] |> buildSndValidation      
+//    testSndLine result circuit
 //
 //[<Fact>] 
 //let ``buildSndValidation: no katode`` () =
@@ -35,11 +38,12 @@ let testCircuit circuit expected =
 //        ]
 //    let expected =
 //        [
-//        Err (LedMissingKatode (LedAnode (TopVer (4, 'B'))))
+//        Err (LedMissingKatode, (LedAnode (TopVer (4, 'B'))))
 //        TopVer (6, 'B')
 //        ]
 //    let result = circuit |> buildSndValidation
-//    testCircuit result expected
+//    testSndLine result expected
+//
 [<Fact>]
 let ``passFstValidation: predicate`` () =
     let circuit =
@@ -101,7 +105,7 @@ let ``circuit: position already taken error`` () =
         pos
         Err (PositionAlreadyTaken, pos)
         ]
-    testCircuit circuit expected
+    testBuild circuit expected
 
 [<Fact>]
 let ``CabelIn: successfull build`` () =
@@ -158,7 +162,7 @@ let ``modeling simple circuit`` () =
         Err (NotGpioPin, c) 
         c2
         ] 
-    testCircuit circuit expected
+    testBuild circuit expected
 
 [<Fact>]
 let ``validaiting element: PowerPin`` () =
