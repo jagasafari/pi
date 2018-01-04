@@ -1,10 +1,45 @@
 module Tests
 
 open Xunit
+open System.Collections.Generic
 open DataTypes
 open Swensen.Unquote
 open Validate
 
+let testCircuit circuit expected =
+    circuit |> build |> Seq.zip <| expected 
+    |> Seq.iter (fun (x, y) -> x =! y)
+
+//let testValidationStage circuit expected =
+//    circuit |> Seq.zip <| expected 
+//    |> Seq.iter (fun (x, y) -> x =! y)
+//
+//[<Fact>]
+//let ``buildSndValidation`` () =
+//    let circuit = [ BottomVer (8,'J') ]
+//    let result = circuit |> buildSndValidation
+//    testCircuit result circuit
+//
+//[<Fact>]
+//let ``buildSndValidation:  invalid circuit`` () =
+//    let circuit = [ NotGpioPin (TopHor 3) ]
+//    let result = circuit |> buildSndValidation      
+//    testCircuit result circuit
+//
+//[<Fact>] 
+//let ``buildSndValidation: no katode`` () =
+//    let circuit = 
+//        [
+//        LedAnode (TopVer (4, 'A'))
+//        TopVer (6, 'B')
+//        ]
+//    let expected =
+//        [
+//        Err (LedMissingKatode (LedAnode (TopVer (4, 'B'))))
+//        TopVer (6, 'B')
+//        ]
+//    let result = circuit |> buildSndValidation
+//    testCircuit result expected
 [<Fact>]
 let ``passFstValidation: predicate`` () =
     let circuit =
@@ -36,26 +71,35 @@ let ``pairwiseRules: count`` () =
 
 [<Fact>]
 let ``getElementName: string`` () =
-    TopHor 7 |> getElementName 
-    =! "TopHor"
+    TopHor 7 |> getElementName =! "TopHor"
 
-let testCircuit circuit expected =
-    circuit |> build |> Seq.zip <| expected 
-    |> Seq.iter (fun (x, y) -> x =! y)
+
+[<Fact>]
+let ``reservePosition`` () =
+    let hs = HashSet<Element>()
+    let simple = TopHor 3
+    let led = LedAnode simple
+    let cabel = CabelIn (TopHor 4)
+    reservePosition hs led =! true 
+    reservePosition hs simple =! false 
+    reservePosition hs simple =! false 
+    reservePosition hs cabel =! true 
+    reservePosition hs cabel =! false 
+    hs.Count =! 2
 
 [<Fact>]
 let ``circuit: position already taken error`` () =
-    let pos = TopVer (2, 'A')
+    let pos = BottomVer (2, 'H')
     let circuit =
         [
-        LedAnode pos
-        LedKatode pos
+        pos
+        pos
         ] 
 
     let expected =
         [
-        LedAnode pos
-        Err (PositionAlreadyTaken, LedKatode pos)
+        pos
+        Err (PositionAlreadyTaken, pos)
         ]
     testCircuit circuit expected
 

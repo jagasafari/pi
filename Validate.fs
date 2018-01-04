@@ -82,12 +82,13 @@ let buildLedKatode = function
     | BottomGround _ -> Some MinusChargeNotToGround
     | element -> buildBBPos element
 
-let isTaken (hs: HashSet<Element>) = function 
+let reservePosition (hs: HashSet<Element>) 
+    = function
     | CabelIn e 
     | CabelOut e 
     | LedAnode e
     | LedKatode e 
-    | e -> hs.Add e |> not
+    | e -> hs.Add e 
 
 let buildNewElement = function 
     | e when isBBPos e -> buildBBPos e
@@ -102,29 +103,30 @@ let buildNewElement = function
 // Element -> Element
 let buildElement () =
     let hs = HashSet<Element>()
-    let isTaken = isTaken hs
     fun element ->
-        if isTaken element 
-        then PositionAlreadyTaken |> Some
-        else buildNewElement element
+        if reservePosition hs element 
+        then buildNewElement element
+        else PositionAlreadyTaken |> Some
         |> buildResult element
 
 let isErrElement = function
     | Err _ -> true | _ -> false
 
-let passFstValidation circuit =
-    circuit
-    |> Seq.exists isErrElement
-    |> not
+let passFstValidation =
+    List.exists isErrElement >> not
 
-// Element seq -> Element seq
-let build circuit = 
+let buildSndValidation circuit =
+    circuit
+    |> passFirstValidation
+    |> function 
+        | false -> circuit
+        | true -> circuit
+
+// Element list -> Element list
+let build = 
     let buildElement = buildElement()
-    let buildFstValidation = Seq.map buildElement 
-    let buildSndValidation circuit = 
-        circuit
-        |> passFstValidation 
-        |> function _ -> circuit
-    circuit 
-    |> buildFstValidation
-    |> buildSndValidation
+    let buildFstValidation = 
+        List.map buildElement 
+
+    buildFstValidation
+    >> buildSndValidation

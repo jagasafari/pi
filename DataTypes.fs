@@ -23,5 +23,6 @@ and BuildError =
     | NotBreadBoardParameters 
     | LedInvalidPosition
     | LedCanOnlyBeConnectedToBreadBoard 
+    | LedMissingKatode
     | MinusChargeNotToGround
     | PositionAlreadyTaken
