@@ -6,6 +6,12 @@ open DataTypes
 open Swensen.Unquote
 open Validate
 
+[<Fact>]
+let ``is array copied`` () =
+    let a = [|1;1|]
+    let updateArray (ar: int []) =
+        ar.[0] <- 2; ()
+    a.[0] =! 1
 let testCircuit build circuit expected =
     circuit |> build |> Seq.zip <| expected 
     |> Seq.iter (fun (x, y) -> x =! y)
