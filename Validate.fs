@@ -1,19 +1,8 @@
 module Validate
 
 open System.Collections.Generic
-open Microsoft.FSharp.Reflection
 open DataTypes
-
-let pairwiseRules = Dictionary<string, string>()
-pairwiseRules.Add("LedAnode", "LedKatode") 
-pairwiseRules.Add("LedKatode", "LedAnode") 
-pairwiseRules.Add("CabelIn", "CabelOut") 
-pairwiseRules.Add("CabelOut", "CabelIn") 
-
-let getElementName case =
-    (FSharpValue.GetUnionFields(
-        case, typeof<Element>)
-    |> fst).Name
+open ValidateSnd
 
 let buildResult element = function
     | None -> element 
@@ -82,51 +71,59 @@ let buildLedKatode = function
     | BottomGround _ -> Some MinusChargeNotToGround
     | element -> buildBBPos element
 
-let reservePosition (hs: HashSet<Element>) 
-    = function
+let reservePosition add = function
     | CabelIn e 
     | CabelOut e 
     | LedAnode e
     | LedKatode e 
-    | e -> hs.Add e 
+    | e -> add e 
 
 let buildNewElement = function 
-    | e when isBBPos e -> buildBBPos e
-    | PowerPin p -> buildPowerPin p
-    | GroundPin p -> buildGroundPin p
+    | e when isBBPos e -> 
+        Some BreadBoardPositionCanNotBeOnItsOwn
+    | e when isGpioPin e -> Some PinCanNotBeOnItsOwn
     | CabelIn e -> buildGpioPin e
     | CabelOut e -> buildBBPos e
     | LedAnode e -> buildBBPos e
     | LedKatode e -> buildLedKatode e
     | e -> NotImplementedValidation |> Some
 
+let getSet<'T> () =
+    let s = HashSet<'T>()
+    s.Add, fun () -> s.Count
+
 // Element -> Element
-let buildElement () =
-    let hs = HashSet<Element>()
-    fun element ->
-        if reservePosition hs element 
-        then buildNewElement element
-        else PositionAlreadyTaken |> Some
-        |> buildResult element
+let buildElement add element =
+    if reservePosition add element 
+    then buildNewElement element
+    else PositionAlreadyTaken |> Some
+    |> buildResult element
 
-let isErrElement = function
-    | Err _ -> true | _ -> false
+let buildZeroValidation (circuit: Element list) = 
+    let minCircuitLength = 6
+    if circuit.Length < minCircuitLength then
+        let tmp = circuit |> List.toArray
+        tmp.[0] <- Err (CircuitToShort, circuit.[0])
+        tmp |> Array.toList
+    else circuit
 
-let passFstValidation =
-    List.exists isErrElement >> not
+let buildFstValidation = 
+    let add, _ = getSet<Element> ()
+    List.map (buildElement add)
 
-let buildSndValidation (circuit: Element list) =
-    circuit
-    |> passFstValidation
+let (.>>) validatePrev validateNext circuit =
+    let isErrElement = function
+        | Err _ -> true | _ -> false
+
+    let circuitPrev = validatePrev circuit
+    circuitPrev
+    |> (List.exists isErrElement >> not)
     |> function 
-        | false -> circuit
-        | true -> circuit
+        | false -> circuitPrev
+        | true -> circuitPrev |> validateNext
 
 // Element list -> Element list
 let build = 
-    let buildElement = buildElement()
-    let buildFstValidation = 
-        List.map buildElement 
-
-    buildFstValidation
-    >> buildSndValidation
+    buildZeroValidation
+    .>> buildFstValidation
+    .>> buildSndValidation

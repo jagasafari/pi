@@ -16,6 +16,10 @@ type Element =
     | Err of (BuildError * Element)
 and BuildError =
     | NotImplementedValidation
+    | CircuitToShort
+    | BreadBoardPositionCanNotBeOnItsOwn
+    | PinCanNotBeOnItsOwn
+    | PositionAlreadyTaken
     | NotGpioPin
     | NotPowerPinParameters
     | NotGroundPinParameters
@@ -23,6 +27,5 @@ and BuildError =
     | NotBreadBoardParameters 
     | LedInvalidPosition
     | LedCanOnlyBeConnectedToBreadBoard 
-    | LedMissingKatode
     | MinusChargeNotToGround
-    | PositionAlreadyTaken
+    | InvalidPairwiseRule

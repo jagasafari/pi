@@ -2,131 +2,71 @@ module Tests
 
 open Xunit
 open System.Collections.Generic
-open DataTypes
 open Swensen.Unquote
+open CircuitTestUtils
+open DataTypes
 open Validate
 
-[<Fact>]
-let ``is array copied`` () =
-    let a = [|1;1|]
-    let updateArray (ar: int []) =
-        ar.[0] <- 2; ()
-    a.[0] =! 1
-let testCircuit build circuit expected =
-    circuit |> build |> Seq.zip <| expected 
-    |> Seq.iter (fun (x, y) -> x =! y)
-
 let testBuild = testCircuit build
-let testSndLine c e = 
-    testCircuit buildSndValidation c e 
-    
-[<Fact>]
-let ``buildSndValidation`` () =
-    let circuit = [ BottomVer (8,'J') ]
-    let result = circuit |> buildSndValidation
-    testSndLine result circuit
-
-//[<Fact>]
-//let ``buildSndValidation:  invalid circuit`` () =
-//    let circuit: Element list = 
-//        [ 
-//        (Err (NotGpioPin, (TopHor 3))) 
-//        ]
-//    let result = [] |> buildSndValidation      
-//    testSndLine result circuit
-//
-//[<Fact>] 
-//let ``buildSndValidation: no katode`` () =
-//    let circuit = 
-//        [
-//        LedAnode (TopVer (4, 'A'))
-//        TopVer (6, 'B')
-//        ]
-//    let expected =
-//        [
-//        Err (LedMissingKatode, (LedAnode (TopVer (4, 'B'))))
-//        TopVer (6, 'B')
-//        ]
-//    let result = circuit |> buildSndValidation
-//    testSndLine result expected
-//
-[<Fact>]
-let ``passFstValidation: predicate`` () =
-    let circuit =
-        [
-        CabelIn (PowerPin (3.0, 8))
-        CabelOut (BottomHor 5)
-        ]
-    passFstValidation circuit =! true
-
-let testSealDict key value =
-    pairwiseRules.[getElementName key]
-    =! (getElementName value)
 
 [<Fact>]
-let ``pairwiseRules: seal dict`` () =
-    let key = LedAnode (TopHor 8)
-    let value = LedKatode (TopVer (8, 'A'))
-    testSealDict key value
-
-[<Fact>]
-let ``pairwiseRules: cabel -> seal dict`` () =
-    let key = CabelIn (PowerPin (6.0, 2))
-    let value = CabelOut (TopHor 6)
-    testSealDict key value
-
-[<Fact>]
-let ``pairwiseRules: count`` () =
-    pairwiseRules.Count =! 4
-
-[<Fact>]
-let ``getElementName: string`` () =
-    TopHor 7 |> getElementName =! "TopHor"
-
+let ``buildZeroValidation:`` () =
+    let test = testCircuit buildZeroValidation
+    test validCircuit validCircuit
 
 [<Fact>]
 let ``reservePosition`` () =
-    let hs = HashSet<Element>()
+    let add, count = getSet<Element> ()
     let simple = TopHor 3
     let led = LedAnode simple
     let cabel = CabelIn (TopHor 4)
-    reservePosition hs led =! true 
-    reservePosition hs simple =! false 
-    reservePosition hs simple =! false 
-    reservePosition hs cabel =! true 
-    reservePosition hs cabel =! false 
-    hs.Count =! 2
+    let reserve = reservePosition add
+    reserve led =! true 
+    reserve simple =! false 
+    reserve simple =! false 
+    reserve cabel =! true 
+    reserve cabel =! false 
+    count() =! 2
 
 [<Fact>]
 let ``circuit: position already taken error`` () =
-    let pos = BottomVer (2, 'H')
     let circuit =
         [
-        pos
-        pos
-        ] 
-
+        CabelIn (PowerPin (3.0, 1))
+        CabelOut (TopHor 4)
+        LedKatode (TopHor 4)
+        LedAnode (TopGround 8)
+        CabelOut (TopGround 10)
+        CabelIn (GroundPin 6)
+        ]
+    let pos = BottomVer (2, 'H')
     let expected =
         [
-        pos
-        Err (PositionAlreadyTaken, pos)
+        CabelIn (PowerPin (3.0, 1))
+        CabelOut (TopHor 4)
+        Err (PositionAlreadyTaken, LedKatode (TopHor 4))
+        LedAnode (TopGround 8)
+        CabelOut (TopGround 10)
+        CabelIn (GroundPin 6)
         ]
     testBuild circuit expected
+
+let add _ = true
 
 [<Fact>]
 let ``CabelIn: successfull build`` () =
     let e = CabelIn (PowerPin (5.0, 2))
-    buildElement () e =! e
+    buildElement add e =! e
 
 [<Fact>]
 let ``CabelIn: failuare build`` () =
     let e = CabelIn (TopHor 8) 
-    buildElement () e =! (Err (NotGpioPin, e))
+    buildElement add e =! (Err (NotGpioPin, e))
 
 [<Fact>]
 let ``CabelIn: wrong pin number`` () =
     let e = CabelIn (GroundPin 0)
-    buildElement () e =! 
+    buildElement add e =! 
     ((NotGroundPinParameters, e) |> Err)
 
 let testBreadBoardPos f =
@@ -134,15 +74,15 @@ let testBreadBoardPos f =
 
 [<Fact>]
 let ``buildBreadBoardVertical: valid positions`` () =
-    let art element (x, y) = 
-        element (x, y) |> buildElement ()
-        =! (element (x, y))
+    let test position (x, y) = 
+        let element = CabelOut (position (x, y)) 
+        element |> buildElement add
+        =! element
 
     fun x -> 
-        let a e = 
-            Seq.iter (fun y -> art e (x, y)) 
-        a TopVer ['A'..'E']
-        a BottomVer ['F'..'J']
+        let run e = Seq.iter (fun y -> test e (x, y)) 
+        run TopVer ['A'..'E']
+        run BottomVer ['F'..'J']
     |> testBreadBoardPos
 
 [<Fact>]
@@ -171,21 +111,21 @@ let ``modeling simple circuit`` () =
     testBuild circuit expected
 
 [<Fact>]
-let ``validaiting element: PowerPin`` () =
-    PowerPin (5.0, 2) |> buildElement ()
-    =! (PowerPin (5.0, 2))
+let ``buildElement: PowerPin`` () =
+    let element = CabelIn (PowerPin (5.0, 2)) 
+    element |> buildElement add
+    =! element
 
 [<Theory>]
 [<InlineData(5.0, 2)>]
 [<InlineData(5.0, 4)>]
 [<InlineData(3.0, 1)>]
 [<InlineData(3.0, 17)>]
-let ``buildPowerPin: valid cases`` 
-    volts num =
+let ``buildPowerPin: valid cases`` volts num =
     buildPowerPin (volts, num) =! None
     
-    PowerPin (volts, num) |> buildElement ()
-    =! (PowerPin (volts, num))
+    let element = CabelIn (PowerPin (volts, num))
+    element |> buildElement add =! element
 
 [<Theory>]
 [<InlineData(4.5, 4)>]
@@ -195,8 +135,8 @@ let ``buildPowerPin: invalid cases`` volts num =
     buildPowerPin (volts, num) 
     =! (Some NotPowerPinParameters)
 
-    let e = PowerPin (volts, num) 
-    buildElement () e 
+    let e = CabelIn (PowerPin (volts, num))
+    buildElement add e 
     =! (Err (NotPowerPinParameters, e))
 
 [<Theory>]
@@ -204,21 +144,21 @@ let ``buildPowerPin: invalid cases`` volts num =
 [<InlineData(30)>]
 let ``buildGroundPin: valid pin`` n =
     buildGroundPin n =! None
-    GroundPin n |> buildElement ()
-    =! (GroundPin n)
+    let element = CabelIn (GroundPin n)
+    element |> buildElement add =! element
 
 [<Theory>]
 [<InlineData(1)>]
 [<InlineData(100)>]
 let ``buildGroundPin: not ground pin`` n =
-    buildGroundPin n =! 
-    (Some NotGroundPinParameters)
-    let e = GroundPin n 
-    e |> buildElement () =! 
+    buildGroundPin n =! (Some NotGroundPinParameters)
+    let e = CabelIn (GroundPin n)
+    e |> buildElement add =! 
     (Err (NotGroundPinParameters, e)) 
 
 [<Fact>]
 let ``buildBreadBoardPosition: valid positions`` () =
     fun x -> 
-        TopHor x |> buildElement () =! (TopHor x)
+        let element = CabelOut (TopHor x)
+        element |> buildElement add =! element
     |> testBreadBoardPos
