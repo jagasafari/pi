@@ -1,1 +1,1 @@
-gcc -o gpio.out Program.c
+gcc -o gpio.out Program.c -lwiringPi

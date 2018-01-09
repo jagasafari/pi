@@ -1,7 +1,10 @@
 #include<stdio.h>
+#include<wiringPi.h>
 
 int main()
 {
-    printf("Starting Humidity And Temperature Read\n");
+    printf("Setting up wiringPi\n");
+    wiringPiSetup();
+    printf("Set up\n");
     return 0;
 }
