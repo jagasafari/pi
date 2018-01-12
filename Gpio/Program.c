@@ -1,38 +1,17 @@
 #include<stdio.h>
 #include<wiringPi.h>
 
-void read()
-{
-    int pin = 4;
-    int inMode = 0;
-    int outMode = 1;
-    int maxRealTime = 99;
-    int defaultPriority = 0;
-    int lowState = 0;
-    int highState = 1;
-
-    pinMode(pin, outMode);
-    if (piHiPri(maxRealTime) != 0)
-    {
-        printf("Error: Max real time priority setup failure\n");
-    }
-    digitalWrite(pin, lowState);
-    delay(2);
-    digitalWrite(pin, highState);
-    delayMicroseconds(140);
-    pinMode(pin, inMode);
-    piHiPri(defaultPriority);
-    read();
-}
-
-int timeStampIdx = 0;
 int pinIdx = 1;
+
 int wiringPiSetupCmd = 1;
 int pullDownCmd = 2;
+int pullUpCmd = 3;
+int readModeCmd = 4;
+int readDataCmd = 5;
 
-int result[6] = {0, 0, 0, 0, 0, 0};
+//#########################################
 int errorIdx = 1;
-int noError = 0;
+
 int notImplementedCmdError = 1;
 
 void piSetup()
@@ -49,10 +28,42 @@ void pullDown(int pin, int milliseconds)
     delay(milliseconds);
 }
 
-void executeNextCmd(int size, int * cmds, int * cmdArgs)
+void pullUp(int pin, int microseconds)
+{
+    digitalWrite(pin, HIGH);
+    delayMicroseconds(microseconds);
+}
+
+void readCounts(
+    int pin, 
+    int numTransitions, 
+    int microseconds, 
+    int badDataCounts,
+    int outputOffset,
+    int * output)
+{
+    int lastState = HIGH;
+    for(int i = 0; i < numTransitions; i++)
+    {
+        int counts = 0;
+        while(digitalRead(pin) == lastState)
+        {       
+            counts++;
+            if(counts == badDataCounts)
+            {
+                return;
+            }
+        }
+        lastState = digitalRead(pin);
+        output[i+outputOffset] = counts;
+    }
+}
+    
+void nextCmd(int numCmds, int * cmds, int * args, int * output)
 { 
     int nextArgIdx = 0;
-    for (int i = 2; i < size; i++)
+    int pin = cmds[pinIdx];
+    for (int i = 2; i < 2 + numCmds; i++)
     {
         if(cmds[i] == wiringPiSetupCmd)
         {
@@ -60,28 +71,52 @@ void executeNextCmd(int size, int * cmds, int * cmdArgs)
         }
         else if(cmds[i] == pullDownCmd)
         {
-            pullDown(cmds[pinIdx], cmdArgs[nextArgIdx++]);
+            pullDown(pin, args[nextArgIdx++]);
+        }
+        else if(cmds[i] == pullUpCmd)
+        {
+            pullUp(pin, args[nextArgIdx++]);
+        }
+        else if(cmds[i] == readModeCmd)
+        {
+            pinMode(pin, INPUT);
+        }       
+        else if(cmds[i] == readDataCmd)
+        {
+            readCounts(
+                pin, 
+                args[nextArgIdx++],
+                args[nextArgIdx++],
+                args[nextArgIdx++],
+                args[nextArgIdx++],
+                output); 
         }
         else
         {
-            result[errorIdx] = notImplementedCmdError;
+            output[errorIdx] = notImplementedCmdError;
         }
     }
 }
 
 int main()
 {
-    // 0 -> ticks, 1 -> pin, 2 .. -> cmd
-    int cmdInput[5] = {1234, 7, 1, 2, 3};
-    int cmdArgs[5] = {0, 0, 0, 0, 0};
-    // 0 -> ticks, 1 -> error, 2 .. -> result counts
-    result[timeStampIdx] = cmdInput[timeStampIdx]; 
-    result[errorIdx] = noError; 
-    result[2] = 0; result[3] = 0; result[4] = 0; result[5] = 0;
-    executeNextCmd(5, cmdInput, cmdArgs);
-    for (int i = 0; i < 5; i++)
+    int input_0[3] = {788, 0, 1};
+    int output_0[2];
+    output_0[0] = input_0[0]; output_0[errorIdx] = 0;
+    nextCmd(1, input_0, NULL, output_0);
+
+    while(true)
     {
-        printf("result: %d\t", result[i]);
+        int input_1[6] = {1234, 7, 2, 3, 4, 5};
+        int inputArgs_1[6] = {18, 40, 85, 1, 255, 2};
+        int output_1[100];
+        output_1[0] = input_1[0]; output_1[errorIdx] = 0; 
+        nextCmd(4, input_1, inputArgs_1, output_1);
+        for (int i = 0; i < 87; i++)
+        {
+            printf("output: %d\t", output_1[i]);
+        }
     }
+
     return 0;
 }
