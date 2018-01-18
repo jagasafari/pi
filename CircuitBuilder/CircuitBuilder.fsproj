@@ -5,6 +5,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="DataTypes.fs" />
+    <Compile Include="Calculator.fs" />
+    <Compile Include="CalculatorTests.fs" />
+    <Compile Include="Pins.fs" />
+    <Compile Include="Resistor.fs" />
+    <Compile Include="ResistorTests.fs" />
     <Compile Include="ValidateSnd.fs" />
     <Compile Include="Validate.fs" />
     <Compile Include="Read.fs" />

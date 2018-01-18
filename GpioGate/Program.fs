@@ -1,1 +1,8 @@
-module Program = let [<EntryPoint>] main _ = 0
+module Program  
+
+open System
+open Led
+    
+let [<EntryPoint>] main _ = 
+    let toggle = led 0
+    0

@@ -1,12 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
+  <PropertyGroup> 
     <TargetFramework>netcoreapp2.0</TargetFramework>
 
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Random.fs" />
+    <Compile Include="Contract.fs" />
+    <Compile Include="Led.fs" />
+    <Compile Include="Stamp.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
