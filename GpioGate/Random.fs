@@ -3,8 +3,8 @@ module Random
 open System
 open System.Threading
 
-let rndMilliSec () =
-    let rnd = Random(Environment.TickCount)
+let rndInt () =
+    let rnd = Random()
     fun lower upper -> rnd.Next(lower, upper)
 
 let timer () =
@@ -20,8 +20,7 @@ let timer () =
     let change interval =
         match timer with
         | Some x -> 
-            x.Change(interval, Timeout.Infinite)
-            |> ignore
+            x.Change(interval, Timeout.Infinite) |> ignore
         | None -> ()
     let stop () = 
         match timer with
@@ -31,14 +30,12 @@ let timer () =
 let rndTimesStream () =
     let publish, trigger = 
         let evt = Event<_>() in (evt.Publish, evt.Trigger)
-    let rndTime () = rndMilliSec () 1000 3000
+    let rndTime = 
+        let r = rndInt ()
+        fun () -> r 1000 3000
     let create, change, stop = timer ()
     let callBack _ = 
         try (trigger ())
         finally (change (rndTime ()))
     create callBack (rndTime ())
     publish, stop
-// subscribe with handle
-// handle calls wiringpi to toggle the single led
-// need pin number
-// simulator first

@@ -1,24 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup> 
+  <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="Random.fs" />
     <Compile Include="Contract.fs" />
+    <Compile Include="CmdBuilder.fs" />
     <Compile Include="Led.fs" />
     <Compile Include="Stamp.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.3.0-preview-20170628-02" />
+    <PackageReference Include="Unquote" Version="4.0.0" />
     <PackageReference Include="xunit" Version="2.2.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.2.0" />
   </ItemGroup>
-
 </Project>

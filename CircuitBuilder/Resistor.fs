@@ -1,8 +1,35 @@
 module Resistor
 
-type Color = | Black | Brown | Red | Orange | Yellow | Green | Blue | Violet | Grey | White | Gold | Silver
+open Errors
 
 type Resistor = Resistor of (float * float * int option)
+
+type MultiplierColor = 
+    | Black 
+    | Brown 
+    | Red 
+    | Orange 
+    | Yellow 
+    | Green 
+    | Blue 
+    | Violet 
+    | Grey 
+    | White 
+    | Gold 
+    | Silver
+
+let figure = function
+    | Black -> 0.0
+    | Brown -> 1.0
+    | Red -> 2.0
+    | Orange -> 3.0
+    | Yellow -> 4.0
+    | Green -> 5.0
+    | Blue -> 6.0
+    | Violet -> 7.0
+    | Grey -> 8.0
+    | White -> 9.0
+    | Gold | Silver -> fail NotDigitColor
 
 let multiplier = function
     | Black -> 1.0      
@@ -17,7 +44,6 @@ let multiplier = function
     | White -> 10.0**9.0
     | Gold -> 0.1
     | Silver -> 0.01
-    | NoColor -> 1.0
 
 let tolerance = function
     | Brown -> 0.01
@@ -28,16 +54,17 @@ let tolerance = function
     | Grey -> 0.0005
     | Gold -> 0.05
     | Silver -> 0.1
-    | NoColor -> 0.2
-    | Black | Orange | Yellow -> 0.0
+    | Black | White | Orange | Yellow 
+        -> fail NotToleranceColor
 
-let figure _ = 0.0
-
+let ohms f1 f2 m =
+    m |> multiplier |> (*)
+    <| ((figure f1) * 10.0 + (figure f2))
+    
 let resistor = function
     | [f1; f2; m; t] ->
-        let ohms = 
-            m |> multiplier |> (*) 
-            <| ((figure f1) * 10.0 + (figure f2))
-        Resistor (ohms, t |> tolerance, None)
+        Resistor (ohms f1 f2 m, t |> tolerance, None)
+    | [f1; f2; m] ->
+        Resistor (ohms f1 f2 m, 0.2, None) 
     | _ -> failwith "not yet"
         
