@@ -14,6 +14,11 @@ let ``rndTimesStream: `` () =
     stop ()
 
 [<Fact>]
+let ``led: toogle few times`` () =
+    let toggle = led 0
+    toggle () =! ([||], [||], On)
+
+[<Fact>]
 let ``cmdBuilder: add then create`` () =
     let add, create  = cmdBuilder (fun () -> 0) ()
     add (0, [||])

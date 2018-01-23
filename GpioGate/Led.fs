@@ -20,6 +20,7 @@ let led pin =
         | Some Off ->
             digitalWrite pin Low
             state <- Some On
+        ([||], [||], state.Value)
     toggle
 
 let rndChangeRgbLed builder pinRed pinGreen pinBlue =
@@ -42,8 +43,3 @@ let rndChangeRgbLed builder pinRed pinGreen pinBlue =
         color <- rndRgb () |> Some
         ([||], [||], color.Value)
     change
-
-// gpiocmdBuilder.build : ((int []) * (iny []))
-//createPwnPin returns (cmd, [pin, 0, 100])
-//gpioCmdBuilder.add (cmd, [pin, 0, 100])
-//gpioCmdBuilder has state cmdList and argsList
