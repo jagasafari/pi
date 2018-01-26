@@ -6,9 +6,11 @@ open Random
 
 type LedState = On | Off
 
-let led pin = 
+let led builder pin = 
     let mutable state: LedState option = None
     let toggle ()  = 
+        let add, addArgs, create = builder ()
+        add pin
         match state with
         | None ->
             pinMode pin Output
@@ -20,12 +22,12 @@ let led pin =
         | Some Off ->
             digitalWrite pin Low
             state <- Some On
-        ([||], [||], state.Value)
+        (create (), state.Value)
     toggle
 
 let rndChangeRgbLed builder pinRed pinGreen pinBlue =
     let mutable color : (int * int * int) option = None
-    let add, create = builder ()
+    let add, addArgs, create = builder ()
     let init () =
         let createPwmPin pin = softPwmCreate pin 0 100
         createPwmPin pinRed
